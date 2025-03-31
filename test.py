@@ -7,6 +7,7 @@ import warnings
 import wandb
 import torch as th
 from stable_baselines3.common.callbacks import EvalCallback
+from wandb.integration.sb3 import WandbCallback
 
 from sbx import DDPG, DQN, PPO, SAC, TD3, TQC, CrossQ
 
@@ -149,23 +150,15 @@ def main():
                           tensorboard_log=f"runs/{run.id}",
                           device=device)
 
-        # 设置评估回调
-        callbacks = []
-        if args.eval_freq > 0:
-            eval_callback = EvalCallback(
-                eval_env,
-                best_model_save_path=save_path,
-                log_path=save_path,
-                eval_freq=max(args.eval_freq // model.n_envs, 1),
-                n_eval_episodes=args.eval_episodes,
-                deterministic=True,
-                render=False
-            )
-            callbacks.append(eval_callback)
+        # 设置 WandB 回调，使用统一的保存路径
+        wandb_callback = WandbCallback(
+            model_save_path=save_path,  # 使用之前创建的统一保存路径
+            verbose=2,
+        )
 
         # 训练
         model.learn(total_timesteps=args.train_steps, 
-                   callback=callbacks if callbacks else None,
+                   callback=wandb_callback,
                    progress_bar=True)
 
         # 保存最终模型
